@@ -1,5 +1,9 @@
 # bacdive-metanalyzer
 - rust bacdive meta-analyzer
-- This is the last part of the bacdive meta-analyzer, which gives you a integrated API for all the bacdive plus analysis.
+- the first two parts such as the bacdive and bacdive analyzer can be found here: 
+  - [bacdive-analyzer](https://github.com/sciencegenome/bacdive-analyzer)
+  - [bacdive](https://github.com/sciencegenome/bacdive)
+- This is the last part that will give you all the information from the bacdive without using the web. 
+
 
 Gaurav Sablok
