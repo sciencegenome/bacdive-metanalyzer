@@ -1,153 +1,119 @@
 mod args;
+mod genome;
 use crate::args::CommandParse;
 use crate::args::Commands;
+use crate::genome::Bacterialphyla;
+use crate::genome::GenomeReferences;
 use clap::Parser;
-use reqwest::*;
-use scraper::selector;
-use select::*;
+use reqwest::blocking::get;
+use scraper::{Html, Selector};
+use select::document;
 use std::error::Error;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::process::Command;
 
 /*
 *Author Gaurav Sablok
 *Universitat Potsdam and SLB Potsdam
-*Date 2024-1-22
-bacdive meta-analyzer: this analyzes the meta data from the bacdive
-along with the sequence analysis embedded within the bacdive-metaanalyzer.
-Give a bacdive file from the URL https://bacdive.dsmz.de/advsearch and
-then search the strain and it will connect to the bacdive automatically
-and will give you the following information:
+*Date 2024-1-28
 
+
+bacdive meta-analyzer: this analyzes the meta data from the bacdive associated
+with that specific strain and gives you the following information on that
+specific strain:
 Strain information:
 Phylum, Class Order, Family, Genus, Species
 NCBI-taxID, ncbi-GenBank, ncbi-ENA, Literature and References.
 
-Wrote at SLB Potsdam.
 */
 
 fn main() {
     let bacdiveargs = CommandParse::parse();
     match &bacdiveargs.command {
-        Commands::Strain {
-            bacdive_analyzer,
-            strain,
-        } => {
+        Commands::Strain { strain } => {
+            let commandout = bacdive_search(strain).unwrap();
+            println!(
+                "The associated information with this strain is: {:?}",
+                commandout
+            );
         }
     }
 }
-#[derive(Debug, Clone, PartialOrd, PartialEq)]
-pub struct BacdiveSearchPattern {
-    pub id: String,
-    pub species: String,
-    pub designation_header: String,
-    pub strain_number: String,
-    pub type_strain: String,
-}
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-struct SeqNCBI {
-    sequence: String,
-}
+fn bacdive_search(strain: &str) -> Result<String, Box<dyn Error>> {
+    let weblink = String::from("https://bacdive.dsmz.de/strain");
+    let id = strain;
+    let finaldownload: String = format!("{}{}", weblink, id);
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-struct SpeciesInformation {
-    domain: String,
-    phylum: String,
-    class: String,
-    order: String,
-    family: String,
-    genus: String,
-    species: String,
-    scientificname: String,
-}
+    let datalink = reqwest::blocking::get(finaldownload)
+        .unwrap()
+        .text()
+        .unwrap();
 
-fn bacdive_search(path: &str, strain: &str) -> Result<String, Box<dyn Error>> {
-    let bacdiveopen = File::open(path).expect("file not found");
-    let bacdiveread = BufReader::new(bacdiveopen);
-    let mut bacdivestore: Vec<BacdiveSearchPattern> = Vec::new();
-    for i in bacdiveread.lines() {
-        let line = i.expect("line not found");
-        let linevec: Vec<_> = line.split(",").collect::<Vec<_>>();
-        bacdivestore.push(BacdiveSearchPattern {
-            id: linevec[0].to_string(),
-            species: linevec[1].to_string(),
-            designation_header: linevec[2].to_string(),
-            strain_number: linevec[3].to_string(),
-            type_strain: linevec[4].to_string(),
-        })
-    }
+    let mut bacterialphylainformation: Vec<String> = Vec::new();
+    let mut bacterialreferenceinformation: Vec<String> = Vec::new();
+    let mut bacterialsequenceinformation: Vec<String> = Vec::new();
+    let mut referencesvector: Vec<String> = Vec::new();
 
-    let mut finaldownload_url: Vec<String> = Vec::new();
-    for i in bacdivestore.iter() {
-        if i.id == strain {
-            let weblink = String::from("https://bacdive.dsmz.de/strain");
-            let id = strain;
-            let finaldownload: String = format!("{}{}", weblink, id);
-            finaldownload_url.push(finaldownload);
+    let parsedstrainpage = Html::parse_document(&datalink);
+    let phylaselect = scraper::Selector::parse(". valigntop paddingright <a").unwrap();
+    let seqlink = scraper::Selector::parse(". seq-links r").unwrap();
+    let ncbilink = scraper::Selector::parse(". r ncbi-tax-link").unwrap();
+    let referencelink = scraper::Selector::parse(". resultdetail_reference_refid").unwrap();
+
+    for phyla in parsedstrainpage.select(&phylaselect) {
+        if let Some(href) = phyla.value().attr("href") {
+            bacterialphylainformation.push(href.to_string());
         }
     }
 
-    /*
-     * sorting the species and the ncbi link
-     * */
-
-    for i in finaldownload_url.iter() {
-        let datalink = reqwest::blocking::get(i);
-        let web = datalink.unwrap().text().unwrap();
-        let selectregion_seqlinks = scraper::Selector::parse(". seq-links r").unwrap();
-        let selectregions_ncbi_links = scraper::Selector::parse(". r ncbi-tax-link").unwrap();
-        let new_seqlinks = document.select(&selectregion_seqlinks);
-        let new_ncbi_links = document.select(&selectregions_ncbi_links);
-        let seqlinks_vector: Vec<_> = new_seqlinks.text().collect::<Vec<_>>();
-        let ncbi_vector: Vec<_> = new_ncbi_links.text().collect::<Vec<_>>();
-    }
-
-    /*  sorting the species information:
-     *
-     * */
-
-    let mut finaldataspecies: Vec<SpeciesInformation> = Vec::new();
-    for i in finaldownload_url.iter() {
-        let datalink = reqwest::blocking::get(i);
-        let weblink = response.unwrap().text().unwrap();
-        let specieslink = scraper::Selector::parse(". valigntop paddingright").unwrap();
-        let speciesselected = document.select(&specieslink);
-        let speciestext: Vec<_> = speciesselected.text().collect::<Vec<_>>();
-        for i in speciestext.iter() {
-            finaldataspecies.push(SpeciesInformation {
-                domain: speciestext[0],
-                phylum: speciestext[1],
-                class: speciestext[2],
-                order: speciestext[3],
-                family: speciestext[4],
-                genus: speciestext[5],
-                species: speciestext[6],
-                scientificname: speciestext[7],
-            });
+    for seq in parsedstrainpage.select(&seqlink) {
+        if let Some(href) = seq.value().attr("href") {
+            bacterialsequenceinformation.push(href.to_string());
         }
     }
 
-
-    #[derive(Debug, Clone, PartialOrd, PartialEq)]
-    struct References {
-        referencesection: String,
-        referencelink: String,
+    for id in parsedstrainpage.select(&ncbilink) {
+        if let Some(href) = id.value().attr("href") {
+            bacterialreferenceinformation.push(href.to_string());
+        }
     }
 
-    let mut referencesvector: Vec<References> = Vec::new();
-    for i in finaldownload_url.iter() {
-        let datalink = reqwest::blocking::get(i);
-        let weblink = datalink.unwrap().text().unwrap();
-        let referencelink = scraper::Selector::parse(". resultdetail_reference_refid").unwrap();
-        let referencetext = document
-            .select(&referencelink)
-            .next()
-            .and_then(|a| a.value().attr("href"))
-            .map(str::to_owned)
-            .collect::<Vec<_>>();
+    for iterref in parsedstrainpage.select(&referencelink) {
+        if let Some(href) = iterref.value().attr("href") {
+            referencesvector.push(href.to_string());
+        }
     }
+
+    let phylaselect = parsedstrainpage
+        .select(&referencelink)
+        .next()
+        .and_then(|a| a.value().attr("href"))
+        .map(str::to_owned)
+        .into_iter()
+        .collect::<Vec<_>>();
+
+    let seqselect = parsedstrainpage
+        .select(&seqlink)
+        .next()
+        .and_then(|a| a.value().attr("href"))
+        .map(str::to_owned)
+        .into_iter()
+        .collect::<Vec<_>>();
+
+    let ncbiselect = parsedstrainpage
+        .select(&ncbilink)
+        .next()
+        .and_then(|a| a.value().attr("href"))
+        .map(str::to_owned)
+        .into_iter()
+        .collect::<Vec<_>>();
+
+    let referenceselect = parsedstrainpage
+        .select(&referencelink)
+        .next()
+        .and_then(|a| a.value().attr("href"))
+        .map(str::to_owned)
+        .into_iter()
+        .collect::<Vec<_>>();
 
     Ok("The results for the following strain are as follow".to_string())
 }

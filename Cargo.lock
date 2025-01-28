@@ -87,8 +87,6 @@ dependencies = [
  "reqwest",
  "scraper",
  "select",
- "serde",
- "serde_json",
 ]
 
 [[package]]

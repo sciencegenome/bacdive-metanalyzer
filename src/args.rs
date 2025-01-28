@@ -1,9 +1,9 @@
 use clap::{Parser, Subcommand};
 #[derive(Debug, Parser)]
 #[command(
-    name = "bacdive",
+    name = "bacdive-metanalyzer",
     version = "1.0",
-    about = "prepairing the json for the bacdive"
+    about = "rust api for interaction with bacdive"
 )]
 pub struct CommandParse {
     /// subcommands for the specific actions
@@ -16,8 +16,6 @@ pub enum Commands {
     /// search for the specific species in the bacdive to get their strain and associated
     /// information
     Strain {
-     /// please provide the path to the bacdive file
-      bacdive_analyzer: String,
      /// please provide the specific id that you want to look
       strain: String,
     }
