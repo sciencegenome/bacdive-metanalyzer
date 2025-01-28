@@ -3,7 +3,8 @@
 - the first two parts such as the bacdive and bacdive analyzer can be found here: 
   - [bacdive-analyzer](https://github.com/sciencegenome/bacdive-analyzer)
   - [bacdive](https://github.com/sciencegenome/bacdive)
-- This is the last part that will give you all the information from the bacdive without using the web. 
+- This is the last part that will give you all the information from the bacdive without using the web.
+- please see the last commit message and if it says compiled binary then it is completed or else still in development version.
 
  ```
  cargo build
